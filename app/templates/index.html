@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h5>Herramientas</h5>
+            </div>
+            <div class="card-body">
+                <button id="btn-add-node" class="btn btn-primary mb-2 w-100">Añadir Cargo</button>
+                <hr>
+                <h6>Propiedades del nodo</h6>
+                <div id="node-properties" class="mt-3">
+                    <form id="node-form" class="d-none">
+                        <input type="hidden" id="node-id">
+                        <div class="mb-3">
+                            <label for="node-title" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="node-title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="node-description" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="node-description" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="node-type" class="form-label">Tipo de cargo</label>
+                            <select class="form-select" id="node-type">
+                                <option value="direct">Cargo directo</option>
+                                <option value="advisory">Cargo de asesoría</option>
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-success">Guardar</button>
+                            <button type="button" id="btn-delete-node" class="btn btn-danger">Eliminar</button>
+                        </div>
+                    </form>
+                </div>
+                <hr>
+                <h6>Propiedades de la conexión</h6>
+                <div id="connection-properties" class="mt-3">
+                    <form id="connection-form" class="d-none">
+                        <input type="hidden" id="connection-id">
+                        <div class="mb-3">
+                            <label for="connection-type" class="form-label">Tipo de conexión</label>
+                            <select class="form-select" id="connection-type">
+                                <option value="direct">Línea continua (mando directo)</option>
+                                <option value="advisory">Línea discontinua (asesoría)</option>
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-success">Guardar</button>
+                            <button type="button" id="btn-delete-connection" class="btn btn-danger">Eliminar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Organigrama</h5>
+                <div>
+                    <button id="btn-connect-nodes" class="btn btn-outline-primary">Conectar nodos</button>
+                    <button id="btn-save-diagram" class="btn btn-success ms-2">Guardar organigrama</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="organigrama" class="diagram-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear conexiones -->
+<div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conectar nodos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="new-connection-form">
+                    <div class="mb-3">
+                        <label for="source-node" class="form-label">Nodo de origen</label>
+                        <select class="form-select" id="source-node" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="target-node" class="form-label">Nodo de destino</label>
+                        <select class="form-select" id="target-node" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new-connection-type" class="form-label">Tipo de conexión</label>
+                        <select class="form-select" id="new-connection-type">
+                            <option value="direct">Línea continua (mando directo)</option>
+                            <option value="advisory">Línea discontinua (asesoría)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-create-connection">Crear conexión</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/organigrama.js') }}"></script>
+{% endblock %}
