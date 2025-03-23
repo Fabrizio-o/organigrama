@@ -1,64 +1,189 @@
-/* Estilos generales */
-body {
-    background-color: #f5f5f5;
+/* Estilos para impresión */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    #print-container, #print-container * {
+        visibility: visible;
+    }
+    
+    #print-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    .print-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .print-legend {
+        margin-top: 20px;
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 3px;
+    }
+    
+    .legend-line {
+        width: 30px;
+        height: 0;
+        margin-right: 10px;
+        border-top: 2px solid black;
+    }
 }
 
-/* Contenedor del diagrama */
-.diagram-container {
-    width: 100%;
-    height: 600px;
-    background-color: white;
-    border: 1px solid #ccc;
-    overflow: hidden;
-}
-
-/* Estilos para los nodos */
-.node {
-    fill: #fff;
-    stroke: #2c3e50;
-    stroke-width: 2px;
-    cursor: pointer;
-}
-
+/* Mejorar apariencia de nodos según tipo de cargo */
 .node-direct {
-    fill: #f8f9fa;
+    fill: #e6f7ff;
 }
 
-.node-advisory {
-    fill: #e2f0ff;
+.node-manager {
+    fill: #ffd966;
 }
 
-.node text {
-    font-family: Arial, sans-serif;
-    font-size: 12px;
-    fill: #333;
-    text-anchor: middle;
-    pointer-events: none;
+.node-staff {
+    fill: #c6e0b4;
 }
 
-/* Estilos para las conexiones */
-.connection {
-    stroke: #2c3e50;
-    stroke-width: 2px;
+.node-executive {
+    fill: #f4cccc;
+}
+
+/* Estilos adicionales para la impresión */
+#print-container .print-content {
+    width: 100%;
+    margin: 0 auto;
+    border: 1px solid #ccc;
+    background-color: white;
+    padding: 10px;
+}
+
+#print-container .print-header h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.legend-dashed {
+    border-top: 2px dashed black;
+}
+
+/* Asegurar que el SVG se muestre completo */
+#print-container svg {
+    max-width: 100%;
+    height: auto !important;
+    overflow: visible;
+}
+
+/* Estilos para los modales */
+.modal-content {
+    border-radius: 10px;
+}
+
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 15px;
+}
+
+/* Estilos para la lista de organigramas */
+#organigrama-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.list-group-item {
     cursor: pointer;
+    padding: 10px 15px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
 }
 
-.connection-direct {
-    stroke-dasharray: none;
+.list-group-item:hover {
+    background-color: #f8f9fa;
 }
 
-.connection-advisory {
-    stroke-dasharray: 5, 3;
+/* Estilos para los botones */
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
 }
 
-/* Estilos para los elementos seleccionados */
-.selected {
-    stroke: #007bff;
-    stroke-width: 3px;
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
 }
 
-/* Estilos para los formularios */
-.form-control:focus, .form-select:focus {
+.btn-info {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+}
+
+.btn-outline-primary {
+    color: #007bff;
     border-color: #007bff;
-    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-outline-primary:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+/* Estilos para el formulario de guardar organigrama */
+#save-organigrama-form .form-control {
+    margin-bottom: 15px;
+}
+
+/* Estilos para el área de dibujo del organigrama */
+.diagram-container {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    background-color: white;
+    padding: 10px;
+}
+
+/* Estilos para el cursor en modo conexión */
+body.connection-mode {
+    cursor: crosshair;
+}
+
+.list-group-item.active {
+    background-color: #007bff; /* Color de fondo azul */
+    color: white; /* Texto en blanco */
 }

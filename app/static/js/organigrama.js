@@ -4,12 +4,25 @@ let paper;
 let selectedElement = null;
 let connectMode = false;
 let sourceNode = null;
+let currentOrganigramaId = null;  // ID del organigrama actual
+
+// Colores para los diferentes tipos de nodos
+const nodeColors = {
+    direct: {
+        fill: '#e6f7ff',      // Azul claro para cargos directos
+        stroke: '#1890ff'     // Azul para el borde
+    },
+    advisory: {
+        fill: '#fff7e6',      // Amarillo claro para cargos de asesoría
+        stroke: '#fa8c16'     // Naranja para el borde
+    }
+};
 
 // Inicialización cuando el DOM está listo
 $(document).ready(function() {
     initializeJointGraph();
-    loadNodesFromServer();
     setupEventListeners();
+    listOrganigramas();  // Cargar la lista de organigramas al iniciar
 });
 
 // Inicializar el gráfico JointJS
@@ -54,45 +67,21 @@ function initializeJointGraph() {
     });
 }
 
-// Cargar nodos desde el servidor
-function loadNodesFromServer() {
-    $.ajax({
-        url: '/api/nodes',
-        type: 'GET',
-        success: function(nodes) {
-            // Limpiar gráfico existente
-            graph.clear();
-            
-            // Crear nodos
-            nodes.forEach(function(node) {
-                createNodeShape(node);
-            });
-            
-            // Cargar conexiones después de crear los nodos
-            loadConnectionsFromServer();
-        },
-        error: function(error) {
-            console.error('Error al cargar nodos:', error);
-            alert('Error al cargar los nodos del organigrama.');
-        }
-    });
-}
+// Función para crear un nuevo organigrama
+function createNewOrganigrama() {
+    if (confirm('¿Estás seguro de crear un nuevo organigrama? Se perderán los cambios no guardados.')) {
+        // Limpiar el gráfico
+        graph.clear();
 
-// Cargar conexiones desde el servidor
-function loadConnectionsFromServer() {
-    $.ajax({
-        url: '/api/connections',
-        type: 'GET',
-        success: function(connections) {
-            connections.forEach(function(connection) {
-                createConnectionShape(connection);
-            });
-        },
-        error: function(error) {
-            console.error('Error al cargar conexiones:', error);
-            alert('Error al cargar las conexiones del organigrama.');
-        }
-    });
+        // Restablecer el ID del organigrama actual
+        currentOrganigramaId = null;
+
+        // Deseleccionar cualquier elemento seleccionado
+        deselectAll();
+
+        // Mostrar un mensaje de éxito
+        alert('Nuevo organigrama creado. Puedes comenzar a añadir nodos.');
+    }
 }
 
 // Configurar escuchadores de eventos
@@ -101,43 +90,178 @@ function setupEventListeners() {
     $('#btn-add-node').click(function() {
         createNewNode();
     });
-    
+
+    // Botón para crear un nuevo organigrama
+    $('#btn-new-organigrama').click(function() {
+        createNewOrganigrama();
+    });
+
     // Formulario de propiedades del nodo
     $('#node-form').submit(function(e) {
         e.preventDefault();
         saveNodeChanges();
     });
-    
+
     // Botón para eliminar nodo
     $('#btn-delete-node').click(function() {
         deleteSelectedNode();
     });
-    
+
     // Formulario de propiedades de la conexión
     $('#connection-form').submit(function(e) {
         e.preventDefault();
         saveConnectionChanges();
     });
-    
+
     // Botón para eliminar conexión
     $('#btn-delete-connection').click(function() {
         deleteSelectedConnection();
     });
-    
+
     // Botón para activar el modo de conexión
     $('#btn-connect-nodes').click(function() {
         openConnectionModal();
     });
-    
+
     // Botón para crear conexión desde el modal
     $('#btn-create-connection').click(function() {
         createConnectionFromModal();
     });
-    
+
     // Botón para guardar el organigrama completo
     $('#btn-save-diagram').click(function() {
+        openSaveOrganigramaModal();
+    });
+
+    // Botón para cargar un organigrama
+    $('#btn-load-diagram').click(function() {
+        openLoadOrganigramaModal();
+    });
+
+    // Botón para imprimir el organigrama
+    $('#btn-print-diagram').click(function() {
+        printOrganigrama();
+    });
+
+    // Botón para guardar el organigrama desde el modal
+    $('#btn-save-organigrama').click(function() {
         saveOrganigrama();
     });
+
+    // Botón para cargar un organigrama seleccionado
+    $('#btn-load-selected-organigrama').click(function() {
+        loadSelectedOrganigrama();
+    });
+}
+
+// Abrir modal para guardar organigrama
+function openSaveOrganigramaModal() {
+    const modal = new bootstrap.Modal(document.getElementById('saveOrganigramaModal'));
+    modal.show();
+}
+
+// Abrir modal para cargar organigrama
+function openLoadOrganigramaModal() {
+    const modal = new bootstrap.Modal(document.getElementById('loadOrganigramaModal'));
+    modal.show();
+}
+
+// Guardar organigrama
+function saveOrganigrama() {
+    const nombre = $('#organigrama-name').val();
+    
+    if (!nombre) {
+        alert('Por favor, asigna un nombre al organigrama.');
+        return;
+    }
+    
+    const organigramaData = {
+        nombre: nombre,
+        nodos: graph.getElements().map(function(node) {
+            const nodeData = node.get('nodeData');
+            return {
+                id: nodeData.id,
+                title: nodeData.title,
+                description: nodeData.description,
+                nodeType: nodeData.nodeType,
+                positionX: node.position().x,
+                positionY: node.position().y
+            };
+        }),
+        conexiones: graph.getLinks().map(function(link) {
+            const connectionData = link.get('connectionData');
+            return {
+                id: connectionData.id,
+                sourceId: connectionData.sourceId,
+                targetId: connectionData.targetId,
+                connectionType: connectionData.connectionType
+            };
+        })
+    };
+    
+    $.ajax({
+        url: '/api/organigramas',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(organigramaData),
+        success: function(organigrama) {
+            alert('Organigrama guardado correctamente.');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('saveOrganigramaModal'));
+            modal.hide();
+            listOrganigramas();  // Actualizar la lista de organigramas
+        },
+        error: function(error) {
+            console.error('Error al guardar organigrama:', error);
+            alert('Error al guardar el organigrama.');
+        }
+    });
+}
+
+// Listar organigramas guardados
+function listOrganigramas() {
+    $.ajax({
+        url: '/api/organigramas',
+        type: 'GET',
+        success: function(organigramas) {
+            const organigramaList = $('#organigrama-list');
+            organigramaList.empty();
+
+            organigramas.forEach(function(organigrama) {
+                const item = $('<div class="list-group-item"></div>')
+                    .text(organigrama.nombre)
+                    .click(function() {
+                        // Remover la clase 'active' de todos los elementos
+                        organigramaList.find('.list-group-item').removeClass('active');
+
+                        // Agregar la clase 'active' al elemento seleccionado
+                        $(this).addClass('active');
+
+                        // Guardar el ID del organigrama seleccionado
+                        $('#btn-load-selected-organigrama').data('organigramaId', organigrama.id);
+                    });
+
+                organigramaList.append(item);
+            });
+        },
+        error: function(error) {
+            console.error('Error al listar organigramas:', error);
+            alert('Error al cargar la lista de organigramas.');
+        }
+    });
+}
+
+// Cargar un organigrama seleccionado
+function loadSelectedOrganigrama() {
+    const organigramaId = $('#btn-load-selected-organigrama').data('organigramaId');
+    
+    if (!organigramaId) {
+        alert('Por favor, selecciona un organigrama para cargar.');
+        return;
+    }
+    
+    loadNodesFromServer(organigramaId);
+    const modal = bootstrap.Modal.getInstance(document.getElementById('loadOrganigramaModal'));
+    modal.hide();
 }
 
 // Crear un nuevo nodo
@@ -152,7 +276,8 @@ function createNewNode() {
         description: 'Descripción del cargo',
         nodeType: 'direct',
         positionX: defaultPosition.x,
-        positionY: defaultPosition.y
+        positionY: defaultPosition.y,
+        organigramaId: currentOrganigramaId  // Asociar el nodo al organigrama actual
     };
     
     $.ajax({
@@ -173,6 +298,9 @@ function createNewNode() {
 
 // Crear la forma visual de un nodo
 function createNodeShape(nodeData) {
+    // Obtener colores según el tipo de nodo
+    const nodeColor = nodeColors[nodeData.nodeType] || nodeColors.direct;
+    
     // Crear un nodo rectangular con JointJS
     const rect = new joint.shapes.standard.Rectangle({
         id: 'node-' + nodeData.id,
@@ -180,8 +308,8 @@ function createNodeShape(nodeData) {
         size: { width: 150, height: 60 },
         attrs: {
             body: {
-                fill: nodeData.nodeType === 'direct' ? '#f8f9fa' : '#e2f0ff',
-                stroke: '#2c3e50',
+                fill: nodeColor.fill,
+                stroke: nodeColor.stroke,
                 strokeWidth: 2
             },
             label: {
@@ -215,6 +343,9 @@ function createConnectionShape(connectionData) {
         return null;
     }
     
+    // Obtener color para la conexión basado en el tipo
+    const strokeColor = connectionData.connectionType === 'advisory' ? '#fa8c16' : '#1890ff';
+    
     // Crear una línea para la conexión utilizando JointJS
     const link = new joint.shapes.standard.Link({
         id: 'connection-' + connectionData.id,
@@ -224,7 +355,7 @@ function createConnectionShape(connectionData) {
         connector: { name: 'rounded' },
         attrs: {
             line: {
-                stroke: '#2c3e50',
+                stroke: strokeColor,
                 strokeWidth: 2,
                 strokeDasharray: connectionData.connectionType === 'advisory' ? '5,3' : 'none'
             }
@@ -285,10 +416,14 @@ function showConnectionProperties(connectionData) {
 function deselectAll() {
     if (selectedElement) {
         if (selectedElement.isElement()) {
-            selectedElement.attr('body/stroke', '#2c3e50');
+            const nodeData = selectedElement.get('nodeData');
+            const nodeColor = nodeColors[nodeData.nodeType] || nodeColors.direct;
+            selectedElement.attr('body/stroke', nodeColor.stroke);
             selectedElement.attr('body/strokeWidth', 2);
         } else if (selectedElement.isLink()) {
-            selectedElement.attr('line/stroke', '#2c3e50');
+            const connectionData = selectedElement.get('connectionData');
+            const strokeColor = connectionData.connectionType === 'advisory' ? '#fa8c16' : '#1890ff';
+            selectedElement.attr('line/stroke', strokeColor);
             selectedElement.attr('line/strokeWidth', 2);
         }
     }
@@ -330,8 +465,12 @@ function updateNodeVisual(nodeData) {
     const cell = graph.getCell('node-' + nodeData.id);
     
     if (cell) {
+        // Obtener colores según el tipo de nodo
+        const nodeColor = nodeColors[nodeData.nodeType] || nodeColors.direct;
+        
         cell.attr('label/text', nodeData.title);
-        cell.attr('body/fill', nodeData.nodeType === 'direct' ? '#f8f9fa' : '#e2f0ff');
+        cell.attr('body/fill', nodeColor.fill);
+        cell.attr('body/stroke', nodeColor.stroke);
         cell.set('nodeData', nodeData);
     }
 }
@@ -366,6 +505,10 @@ function updateConnectionVisual(connectionData) {
     const cell = graph.getCell('connection-' + connectionData.id);
     
     if (cell) {
+        // Obtener color para la conexión basado en el tipo
+        const strokeColor = connectionData.connectionType === 'advisory' ? '#fa8c16' : '#1890ff';
+        
+        cell.attr('line/stroke', strokeColor);
         cell.attr('line/strokeDasharray', connectionData.connectionType === 'advisory' ? '5,3' : 'none');
         cell.set('connectionData', connectionData);
     }
@@ -376,17 +519,25 @@ function deleteSelectedNode() {
     if (!selectedElement || !selectedElement.isElement()) {
         return;
     }
-    
+
     const nodeData = selectedElement.get('nodeData');
-    
+
     if (confirm('¿Estás seguro de eliminar este nodo? Se eliminarán también todas sus conexiones.')) {
         $.ajax({
             url: '/api/nodes/' + nodeData.id,
             type: 'DELETE',
             success: function() {
-                // El nodo se eliminará automáticamente del gráfico al recargar
-                loadNodesFromServer();
+                // Eliminar las conexiones asociadas al nodo
+                const connections = graph.getConnectedLinks(selectedElement);
+                graph.removeCells(connections);
+
+                // Eliminar el nodo del gráfico
+                graph.removeCells(selectedElement);
+
+                // Deseleccionar el nodo y ocultar el formulario de propiedades
                 deselectAll();
+
+                // Mostrar un mensaje de éxito
                 alert('Nodo eliminado correctamente.');
             },
             error: function(error) {
@@ -510,67 +661,30 @@ function createConnectionFromModal() {
     });
 }
 
-// Guardar todo el organigrama
-function saveOrganigrama() {
-    alert('Organigrama guardado correctamente. Todos los cambios ya están sincronizados con la base de datos.');
-}
+// Función para imprimir el organigrama
+function printOrganigrama() {
+    const organigrama = document.getElementById('organigrama');
 
-// Manejar el modo de conexión entre nodos
-function handleConnectionMode(nodeModel) {
-    if (!sourceNode) {
-        // Primer nodo seleccionado (origen)
-        sourceNode = nodeModel;
-        sourceNode.attr('body/stroke', '#28a745');
-        sourceNode.attr('body/strokeWidth', 3);
-    } else if (sourceNode.id !== nodeModel.id) {
-        // Segundo nodo seleccionado (destino)
-        const sourceId = sourceNode.get('nodeData').id;
-        const targetId = nodeModel.get('nodeData').id;
-        
-        // Crear la conexión
-        const newConnection = {
-            sourceId: sourceId,
-            targetId: targetId,
-            connectionType: 'direct'  // Por defecto, línea continua
-        };
-        
-        $.ajax({
-            url: '/api/connections',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(newConnection),
-            success: function(createdConnection) {
-                createConnectionShape(createdConnection);
-                
-                // Salir del modo de conexión
-                toggleConnectionMode();
-                alert('Conexión creada correctamente.');
-            },
-            error: function(error) {
-                console.error('Error al crear conexión:', error);
-                alert('Error al crear la conexión.');
-                toggleConnectionMode();
-            }
-        });
+    if (!organigrama) {
+        alert('No se encontró el organigrama para imprimir.');
+        return;
     }
-}
 
-// Activar/desactivar el modo de conexión manual
-function toggleConnectionMode() {
-    connectMode = !connectMode;
-    
-    if (connectMode) {
-        $('#btn-connect-nodes').addClass('active').text('Cancelar conexión');
-        $('body').css('cursor', 'crosshair');
-    } else {
-        $('#btn-connect-nodes').removeClass('active').text('Conectar nodos');
-        $('body').css('cursor', 'default');
-        
-        // Limpiar nodo de origen si existe
-        if (sourceNode) {
-            sourceNode.attr('body/stroke', '#2c3e50');
-            sourceNode.attr('body/strokeWidth', 2);
-            sourceNode = null;
-        }
-    }
+    // Crear una ventana emergente para imprimir solo el organigrama
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>ORGANIGRAMA</title>
+                <style>
+                    body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; }
+                    #organigrama { width: 100%; height: auto; }
+                </style>
+            </head>
+            <body onload="window.print(); window.close();">
+                ${organigrama.outerHTML}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
 }

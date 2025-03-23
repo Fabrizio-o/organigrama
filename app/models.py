@@ -1,18 +1,40 @@
 from app import db
 from datetime import datetime
 
-class Node(db.Model):
+class Organigrama(db.Model):
     """
-    Modelo para los nodos del organigrama (cargos/posiciones)
+    Modelo para almacenar organigramas completos
     """
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)  # Título/nombre del cargo
-    description = db.Column(db.Text, nullable=True)  # Descripción opcional
-    node_type = db.Column(db.String(20), nullable=False, default='direct')  # direct o advisory
-    position_x = db.Column(db.Float, nullable=False, default=0)  # Posición X en el canvas
-    position_y = db.Column(db.Float, nullable=False, default=0)  # Posición Y en el canvas
+    nombre = db.Column(db.String(100), nullable=False)  # Nombre del organigrama
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relación con los nodos y conexiones que pertenecen a este organigrama
+    nodos = db.relationship('Node', backref='organigrama', lazy='dynamic', cascade='all, delete-orphan')
+    conexiones = db.relationship('Connection', backref='organigrama', lazy='dynamic', cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'createdAt': self.created_at.isoformat(),
+            'updatedAt': self.updated_at.isoformat()
+        }
+
+class Node(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    node_type = db.Column(db.String(20), nullable=False, default='direct')
+    position_x = db.Column(db.Float, nullable=False, default=0)
+    position_y = db.Column(db.Float, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    organigrama_id = db.Column(db.Integer, db.ForeignKey('organigrama.id'), nullable=False)  # Nuevo campo
+    
+    # Relación con el organigrama al que pertenece este nodo
+    organigrama_id = db.Column(db.Integer, db.ForeignKey('organigrama.id'), nullable=False)
     
     # Relaciones que parten de este nodo
     outgoing_connections = db.relationship('Connection', 
@@ -36,19 +58,21 @@ class Node(db.Model):
             'positionX': self.position_x,
             'positionY': self.position_y,
             'createdAt': self.created_at.isoformat(),
-            'updatedAt': self.updated_at.isoformat()
+            'updatedAt': self.updated_at.isoformat(),
+            'organigramaId': self.organigrama_id
         }
 
 class Connection(db.Model):
-    """
-    Modelo para las conexiones entre nodos
-    """
     id = db.Column(db.Integer, primary_key=True)
     source_id = db.Column(db.Integer, db.ForeignKey('node.id'), nullable=False)
     target_id = db.Column(db.Integer, db.ForeignKey('node.id'), nullable=False)
-    connection_type = db.Column(db.String(20), nullable=False, default='direct')  # direct o advisory
+    connection_type = db.Column(db.String(20), nullable=False, default='direct')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    organigrama_id = db.Column(db.Integer, db.ForeignKey('organigrama.id'), nullable=False)  # Nuevo campo
+    
+    # Relación con el organigrama al que pertenece esta conexión
+    organigrama_id = db.Column(db.Integer, db.ForeignKey('organigrama.id'), nullable=False)
     
     def to_dict(self):
         return {
@@ -57,5 +81,6 @@ class Connection(db.Model):
             'targetId': self.target_id,
             'connectionType': self.connection_type,
             'createdAt': self.created_at.isoformat(),
-            'updatedAt': self.updated_at.isoformat()
+            'updatedAt': self.updated_at.isoformat(),
+            'organigramaId': self.organigrama_id
         }

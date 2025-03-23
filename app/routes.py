@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from app import db
-from app.models import Node, Connection
+from app.models import Node, Connection, Organigrama
 
 main = Blueprint('main', __name__)
 
@@ -8,6 +8,52 @@ main = Blueprint('main', __name__)
 def index():
     """Página principal de la aplicación"""
     return render_template('index.html')
+
+# API para organigramas
+@main.route('/api/organigramas', methods=['GET'])
+def get_organigramas():
+    """Obtener todos los organigramas"""
+    organigramas = Organigrama.query.all()
+    return jsonify([organigrama.to_dict() for organigrama in organigramas])
+
+@main.route('/api/organigramas', methods=['POST'])
+def create_organigrama():
+    """Crear un nuevo organigrama"""
+    data = request.json
+    
+    organigrama = Organigrama(
+        nombre=data.get('nombre', 'Nuevo Organigrama')
+    )
+    
+    db.session.add(organigrama)
+    db.session.commit()
+    
+    return jsonify(organigrama.to_dict()), 201
+
+@main.route('/api/organigramas/<int:organigrama_id>', methods=['GET'])
+def get_organigrama(organigrama_id):
+    """Obtener un organigrama específico con sus nodos y conexiones"""
+    organigrama = Organigrama.query.get_or_404(organigrama_id)
+
+    # Obtener todos los nodos y conexiones asociados a este organigrama
+    nodos = [nodo.to_dict() for nodo in organigrama.nodos]
+    conexiones = [conexion.to_dict() for conexion in organigrama.conexiones]
+
+    return jsonify({
+        'organigrama': organigrama.to_dict(),
+        'nodos': nodos,
+        'conexiones': conexiones
+    })
+
+@main.route('/api/organigramas/<int:organigrama_id>', methods=['DELETE'])
+def delete_organigrama(organigrama_id):
+    """Eliminar un organigrama y todos sus nodos y conexiones asociados"""
+    organigrama = Organigrama.query.get_or_404(organigrama_id)
+    
+    db.session.delete(organigrama)
+    db.session.commit()
+    
+    return jsonify({'message': 'Organigrama eliminado correctamente'}), 200
 
 # API para nodos
 @main.route('/api/nodes', methods=['GET'])
@@ -26,7 +72,25 @@ def create_node():
         description=data.get('description'),
         node_type=data.get('nodeType', 'direct'),
         position_x=data.get('positionX', 0),
-        position_y=data.get('positionY', 0)
+        position_y=data.get('positionY', 0),
+        organigrama_id=data.get('organigramaId')  # Asegúrate de que este campo esté presente
+    )
+    
+    db.session.add(node)
+    db.session.commit()
+    
+    return jsonify(node.to_dict()), 201
+    
+    # Verificar que el organigrama exista
+    organigrama = Organigrama.query.get_or_404(data.get('organigramaId'))
+    
+    node = Node(
+        title=data.get('title'),
+        description=data.get('description'),
+        node_type=data.get('nodeType', 'direct'),
+        position_x=data.get('positionX', 0),
+        position_y=data.get('positionY', 0),
+        organigrama_id=organigrama.id
     )
     
     db.session.add(node)
@@ -58,12 +122,17 @@ def update_node(node_id):
 
 @main.route('/api/nodes/<int:node_id>', methods=['DELETE'])
 def delete_node(node_id):
-    """Eliminar un nodo"""
+    """Eliminar un nodo y sus conexiones asociadas"""
     node = Node.query.get_or_404(node_id)
+
+    # Eliminar todas las conexiones asociadas a este nodo (como source o target)
+    Connection.query.filter((Connection.source_id == node_id) | (Connection.target_id == node_id)).delete()
+
+    # Eliminar el nodo
     db.session.delete(node)
     db.session.commit()
-    
-    return jsonify({'message': 'Nodo eliminado correctamente'}), 200
+
+    return jsonify({'message': 'Nodo y conexiones asociadas eliminados correctamente'}), 200
 
 # API para conexiones
 @main.route('/api/connections', methods=['GET'])
@@ -77,14 +146,18 @@ def create_connection():
     """Crear una nueva conexión entre nodos"""
     data = request.json
     
-    # Verificar que existan los nodos
+    # Verificar que existan los nodos y que pertenezcan al mismo organigrama
     source_node = Node.query.get_or_404(data.get('sourceId'))
     target_node = Node.query.get_or_404(data.get('targetId'))
+    
+    if source_node.organigrama_id != target_node.organigrama_id:
+        return jsonify({'error': 'Los nodos deben pertenecer al mismo organigrama'}), 400
     
     connection = Connection(
         source_id=source_node.id,
         target_id=target_node.id,
-        connection_type=data.get('connectionType', 'direct')
+        connection_type=data.get('connectionType', 'direct'),
+        organigrama_id=source_node.organigrama_id
     )
     
     db.session.add(connection)
